@@ -1,0 +1,120 @@
+-- Crie um cursor nomeado que exiba as informações: Número da ocorrência do SAC, Data de abertura do SAC, Hora de abertura do SAC, Tipo do SAC, Código do produto, Nome do produto, Valor unitário do produto, Percentual do lucro unitário do produto, Número do Cliente e Nome do Cliente 
+
+SET SERVEROUTPUT ON;
+
+DECLARE
+  --cursor_sac mc_sgv_sac%rowtype;   
+  CURSOR cursor_sac IS 
+    SELECT s.nr_sac, s.dt_abertura_sac, s.hr_abertura_sac, s.tp_sac, p.cd_produto, p.ds_produto, p.vl_unitario, p.vl_perc_lucro,
+           c.nr_cliente, c.nm_cliente
+    FROM mc_sgv_sac s
+        INNER JOIN mc_produto p
+        ON s.cd_produto = p.cd_produto
+        INNER JOIN mc_cliente c
+        ON s.nr_cliente = c.nr_cliente;
+BEGIN
+   --OPEN cursor_sac;
+   --LOOP
+        --FETCH cursor_sac INTO mc_sgv_sac.nr_sac, mc_sgv_sac.dt_abertura_sac, mc_sgv_sac.hr_abertura_sac, mc_sgv_sac.tp_sac;
+    FOR val IN cursor_sac LOOP
+        --EXIT WHEN cursor_sac%notfound;
+        dbms_output.put_line
+         ('Numero SAC: ' || val.nr_sac);
+        dbms_output.put_line
+         ('Data de abertura do SAC: ' || val.dt_abertura_sac);
+        dbms_output.put_line
+         ('Hora de abertura do SAC: ' || val.hr_abertura_sac);
+        dbms_output.put_line
+         ('Tipo do SAC: ' || val.tp_sac);
+        dbms_output.put_line
+         ('Codigo do produto: ' || val.cd_produto);
+        dbms_output.put_line
+         ('Nome do produto: ' || val.ds_produto);
+        dbms_output.put_line
+         ('Valor unitario do produto: ' || val.vl_unitario);
+        dbms_output.put_line
+         ('Percentual do lucro unitario do produto: ' || val.vl_perc_lucro);
+        dbms_output.put_line
+         ('Numero do Cliente: ' || val.nr_cliente);
+        dbms_output.put_line
+         ('Nome do Cliente: ' || val.nm_cliente);
+    END LOOP;
+    --CLOSE cursor_sac;
+END;
+/
+
+-- Para cada linha no cursor principal: preencha a coluna "DS_TIPO_CLASSIFICACAO_SAC" com base no status "TP_SAC", seguindo regras específicas; calcule e armazene o valor do lucro unitário em "VL_UNITARIO_LUCRO_PRODUTO" com base nas colunas do cursor; recupere as colunas "SG_ESTADO" e "NM_ESTADO" usando um join entre várias tabelas; e, por fim, armazene o valor médio do ICMS na coluna "VL_ICMS_PRODUTO" usando uma função e fórmula específicas com base no estado do cliente e nas colunas do cursor principal.
+Em seguida, encerre o cursor nomeado.
+
+SET SERVEROUTPUT ON;
+
+DECLARE
+  --cursor_sac mc_sgv_sac%rowtype;   
+  CURSOR cursor_sac IS 
+    SELECT s.nr_sac, s.dt_abertura_sac, s.hr_abertura_sac, s.tp_sac, p.cd_produto, p.ds_produto, p.vl_unitario, p.vl_perc_lucro,
+           c.nr_cliente, c.nm_cliente, e.sg_estado, e.nm_estado
+    FROM mc_sgv_sac s
+        INNER JOIN mc_produto p
+        ON s.cd_produto = p.cd_produto
+        INNER JOIN mc_cliente c
+        ON s.nr_cliente = c.nr_cliente
+        INNER JOIN mc_end_cli ec
+        ON c.nr_cliente = ec.nr_cliente
+        INNER JOIN mc_logradouro l
+        ON ec.cd_logradouro_cli = l.cd_logradouro
+        INNER JOIN mc_bairro b
+        ON l.cd_bairro = b.cd_bairro
+        INNER JOIN mc_cidade ci
+        ON b.cd_cidade = ci.cd_cidade
+        INNER JOIN mc_estado e
+        ON ci.sg_estado = e.sg_estado;
+BEGIN
+   --OPEN cursor_sac;
+   --LOOP
+        --FETCH cursor_sac INTO mc_sgv_sac.nr_sac, mc_sgv_sac.dt_abertura_sac, mc_sgv_sac.hr_abertura_sac, mc_sgv_sac.tp_sac;
+    FOR val IN cursor_sac LOOP
+        --EXIT WHEN cursor_sac%notfound;
+        dbms_output.put_line
+         ('Numero SAC: ' || val.nr_sac);
+        dbms_output.put_line
+         ('Data de abertura do SAC: ' || val.dt_abertura_sac);
+        dbms_output.put_line
+         ('Hora de abertura do SAC: ' || val.hr_abertura_sac);
+        dbms_output.put_line
+         ('Tipo do SAC: ' || val.tp_sac);
+        dbms_output.put_line
+         ('Codigo do produto: ' || val.cd_produto);
+        dbms_output.put_line
+         ('Nome do produto: ' || val.ds_produto);
+        dbms_output.put_line
+         ('Valor unitario do produto: ' || val.vl_unitario);
+        dbms_output.put_line
+         ('Percentual do lucro unitario do produto: ' || val.vl_perc_lucro);
+        dbms_output.put_line
+         ('Valor lucro unitario sobre o produto: ' || val.vl_perc_lucro/100 * val.vl_unitario);
+        dbms_output.put_line
+         ('Numero do Cliente: ' || val.nr_cliente);
+        dbms_output.put_line
+         ('Nome do Cliente: ' || val.nm_cliente);
+        dbms_output.put_line
+         ('Sigla do Estado: ' || val.sg_estado);
+        dbms_output.put_line
+         ('Nome do Estado: ' || val.nm_estado);
+        dbms_output.put_line
+         ('Valor medio do ICMS da Unidade do Produto: ' || pf0110.fun_mc_gera_aliquota_media_icms_estado(val.sg_estado)/100 * val.vl_unitario);
+    IF val.tp_sac = 'S' THEN
+       INSERT INTO mc_sgv_ocorrencia_sac (nr_ocorrencia_sac, dt_abertura_sac, hr_abertura_sac, ds_tipo_classificacao_sac, cd_produto, ds_produto, vl_unitario_produto, vl_perc_lucro, sg_estado, nm_estado, nr_cliente, nm_cliente, vl_icms_produto) VALUES (val.nr_sac, val.dt_abertura_sac, val.hr_abertura_sac, 'SUGESTAO', val.cd_produto, val.ds_produto, val.vl_unitario, val.vl_perc_lucro, val.sg_estado, val.nm_estado, val.nr_cliente, val.nm_cliente, pf0110.fun_mc_gera_aliquota_media_icms_estado(val.sg_estado)/100 * val.vl_unitario);
+    ELSIF val.tp_sac = 'D' THEN
+       INSERT INTO mc_sgv_ocorrencia_sac (nr_ocorrencia_sac, dt_abertura_sac, hr_abertura_sac, ds_tipo_classificacao_sac, cd_produto, ds_produto, vl_unitario_produto, vl_perc_lucro, sg_estado, nm_estado, nr_cliente, nm_cliente, vl_icms_produto) VALUES (val.nr_sac, val.dt_abertura_sac, val.hr_abertura_sac, 'DUVIDA', val.cd_produto, val.ds_produto, val.vl_unitario, val.vl_perc_lucro, val.sg_estado, val.nm_estado, val.nr_cliente, val.nm_cliente, pf0110.fun_mc_gera_aliquota_media_icms_estado(val.sg_estado)/100 * val.vl_unitario);
+    ELSIF val.tp_sac = 'E' THEN
+       INSERT INTO mc_sgv_ocorrencia_sac (nr_ocorrencia_sac, dt_abertura_sac, hr_abertura_sac, ds_tipo_classificacao_sac, cd_produto, ds_produto, vl_unitario_produto, vl_perc_lucro, sg_estado, nm_estado, nr_cliente, nm_cliente, vl_icms_produto) VALUES (val.nr_sac, val.dt_abertura_sac, val.hr_abertura_sac, 'ELOGIO', val.cd_produto, val.ds_produto, val.vl_unitario, val.vl_perc_lucro, val.sg_estado, val.nm_estado, val.nr_cliente, val.nm_cliente, pf0110.fun_mc_gera_aliquota_media_icms_estado(val.sg_estado)/100 * val.vl_unitario);
+    ELSE
+       INSERT INTO mc_sgv_ocorrencia_sac (nr_ocorrencia_sac, dt_abertura_sac, hr_abertura_sac, ds_tipo_classificacao_sac, cd_produto, ds_produto, vl_unitario_produto, vl_perc_lucro, sg_estado, nm_estado, nr_cliente, nm_cliente, vl_icms_produto) VALUES (val.nr_sac, val.dt_abertura_sac, val.hr_abertura_sac, 'CLASSIFICACAO INVALIDA', val.cd_produto, val.ds_produto, val.vl_unitario, val.vl_perc_lucro, val.sg_estado, val.nm_estado, val.nr_cliente, val.nm_cliente, pf0110.fun_mc_gera_aliquota_media_icms_estado(val.sg_estado)/100 * val.vl_unitario);
+    END IF;
+    END LOOP;
+    --CLOSE cursor_sac;
+END;
+/  
+
+
+
